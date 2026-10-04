@@ -1,0 +1,128 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 64 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        (request.auth.token.email_verified == true && request.auth.token.email == 'emiliojacobg@gmail.com') ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidCactusPhoto(data, speciesId) {
+      return data.keys().hasAll(['speciesId', 'scientificName', 'photoData', 'isPublic', 'updatedBy', 'updatedAt']) &&
+        data.keys().hasOnly(['speciesId', 'scientificName', 'photoData', 'notes', 'isPublic', 'updatedBy', 'updatedAt']) &&
+        data.speciesId is string && data.speciesId.size() >= 1 && data.speciesId.size() <= 64 &&
+        data.speciesId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.speciesId == speciesId &&
+        data.scientificName is string && data.scientificName.size() >= 2 && data.scientificName.size() <= 160 &&
+        data.photoData is string && data.photoData.size() >= 0 && data.photoData.size() <= 750000 &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        data.isPublic is bool && data.isPublic == true &&
+        data.updatedBy is string && data.updatedBy.size() >= 1 && data.updatedBy.size() <= 128 &&
+        data.updatedBy == request.auth.uid &&
+        data.updatedAt is timestamp && data.updatedAt == request.time;
+    }
+
+    function isValidCustomSpecies(data, speciesId) {
+      return data.keys().hasAll(['speciesId', 'scientificName', 'genus', 'species', 'subfamily', 'tribe', 'origin', 'growthForm', 'level', 'isPublic', 'createdBy', 'createdAt']) &&
+        data.keys().hasOnly(['speciesId', 'scientificName', 'genus', 'species', 'subfamily', 'tribe', 'origin', 'growthForm', 'level', 'isPublic', 'createdBy', 'createdAt']) &&
+        data.speciesId is string && data.speciesId.size() >= 1 && data.speciesId.size() <= 64 &&
+        data.speciesId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.speciesId == speciesId &&
+        data.scientificName is string && data.scientificName.size() >= 2 && data.scientificName.size() <= 160 &&
+        data.genus is string && data.genus.size() >= 1 && data.genus.size() <= 80 &&
+        data.species is string && data.species.size() >= 1 && data.species.size() <= 80 &&
+        data.subfamily is string && data.subfamily in ['Cactoideae', 'Opuntioideae', 'Pereskioideae', 'Maihuenioideae'] &&
+        data.tribe is string && data.tribe.size() >= 1 && data.tribe.size() <= 80 &&
+        data.origin is string && data.origin.size() >= 1 && data.origin.size() <= 160 &&
+        data.growthForm is string && data.growthForm in ['Globosa', 'Columnar', 'Cladodio (Opuntioide)', 'Epífita', 'Arbustiva / Foliar', 'Geófita / Cespitosa'] &&
+        data.level is int && data.level >= 1 && data.level <= 20 &&
+        data.isPublic is bool && data.isPublic == true &&
+        data.createdBy is string && data.createdBy.size() >= 1 && data.createdBy.size() <= 128 &&
+        data.createdBy == request.auth.uid &&
+        data.createdAt is timestamp && data.createdAt == request.time;
+    }
+
+    function isValidDeletedSpecies(data, speciesId) {
+      return data.keys().hasAll(['speciesId', 'isPublic', 'deletedBy', 'deletedAt']) &&
+        data.keys().hasOnly(['speciesId', 'isPublic', 'deletedBy', 'deletedAt']) &&
+        data.speciesId is string && data.speciesId.size() >= 1 && data.speciesId.size() <= 64 &&
+        data.speciesId.matches('^[a-zA-Z0-9_\\-]+$') &&
+        data.speciesId == speciesId &&
+        data.isPublic is bool && data.isPublic == true &&
+        data.deletedBy is string && data.deletedBy.size() >= 1 && data.deletedBy.size() <= 128 &&
+        data.deletedBy == request.auth.uid &&
+        data.deletedAt is timestamp && data.deletedAt == request.time;
+    }
+
+    function isValidAdminUser(data) {
+      return data.keys().hasAll(['email', 'accessHash', 'createdAt']) &&
+        data.keys().hasOnly(['email', 'accessHash', 'createdAt']) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 254 &&
+        data.accessHash is string && data.accessHash == 'a79928133a6b6e0d4a46542369c3998138e04b7ef91bc16c3e266be46a20b56d' &&
+        data.createdAt is timestamp && data.createdAt == request.time;
+    }
+
+    match /cactus_photos/{speciesId} {
+      allow get: if isValidId(speciesId);
+      allow list: if resource.data.isPublic == true;
+      allow create: if isSignedIn() && isValidId(speciesId) && isValidCactusPhoto(incoming(), speciesId) && isAdmin();
+      allow update: if isSignedIn() && isValidId(speciesId) && isValidCactusPhoto(incoming(), speciesId) && isAdmin() && (
+        incoming().speciesId == existing().speciesId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['scientificName', 'photoData', 'notes', 'isPublic', 'updatedBy', 'updatedAt'])
+      );
+      allow delete: if isSignedIn() && isValidId(speciesId) && isAdmin();
+    }
+
+    match /cactus_custom_species/{speciesId} {
+      allow get: if isValidId(speciesId);
+      allow list: if resource.data.isPublic == true;
+      allow create: if isSignedIn() && isValidId(speciesId) && isValidCustomSpecies(incoming(), speciesId) && isAdmin();
+      allow update: if isSignedIn() && isValidId(speciesId) && isValidCustomSpecies(incoming(), speciesId) && isAdmin() && (
+        incoming().speciesId == existing().speciesId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['scientificName', 'genus', 'species', 'subfamily', 'tribe', 'origin', 'growthForm', 'level', 'isPublic', 'createdBy', 'createdAt'])
+      );
+      allow delete: if isSignedIn() && isValidId(speciesId) && isAdmin();
+    }
+
+    match /cactus_deleted_species/{speciesId} {
+      allow get: if isValidId(speciesId);
+      allow list: if resource.data.isPublic == true;
+      allow create: if isSignedIn() && isValidId(speciesId) && isValidDeletedSpecies(incoming(), speciesId) && isAdmin();
+      allow update: if isSignedIn() && isValidId(speciesId) && isValidDeletedSpecies(incoming(), speciesId) && isAdmin() && (
+        incoming().speciesId == existing().speciesId &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['isPublic', 'deletedBy', 'deletedAt'])
+      );
+      allow delete: if isSignedIn() && isValidId(speciesId) && isAdmin();
+    }
+
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+      allow list: if false;
+      allow create: if isSignedIn() && isValidId(adminUid) && request.auth.uid == adminUid && isValidAdminUser(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(adminUid) && (request.auth.uid == adminUid || isAdmin());
+    }
+  }
+}

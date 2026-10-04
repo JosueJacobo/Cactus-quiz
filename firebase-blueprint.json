@@ -1,0 +1,200 @@
+{
+  "entities": {
+    "CactusPhoto": {
+      "title": "CactusPhoto",
+      "description": "Custom uploaded or linked photo and botanical notes for a cactus species",
+      "type": "object",
+      "properties": {
+        "speciesId": {
+          "type": "string",
+          "description": "Unique identifier of the cactus species",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "scientificName": {
+          "type": "string",
+          "description": "Scientific binomial name of the cactus species",
+          "minLength": 2,
+          "maxLength": 160
+        },
+        "photoData": {
+          "type": "string",
+          "description": "Image URL or compressed data URI for the species photograph",
+          "minLength": 0,
+          "maxLength": 750000
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional botanical notes or locality details added by the owner",
+          "minLength": 0,
+          "maxLength": 1000
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Public visibility flag for catalog queries"
+        },
+        "updatedBy": {
+          "type": "string",
+          "description": "UID of the administrator who updated the species photo",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of the last modification"
+        }
+      },
+      "required": ["speciesId", "scientificName", "photoData", "isPublic", "updatedBy", "updatedAt"]
+    },
+    "CustomCactusSpecies": {
+      "title": "CustomCactusSpecies",
+      "description": "Custom cactus species added by the owner to the catalog",
+      "type": "object",
+      "properties": {
+        "speciesId": {
+          "type": "string",
+          "description": "Unique identifier of the custom species",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "scientificName": {
+          "type": "string",
+          "description": "Scientific binomial name",
+          "minLength": 2,
+          "maxLength": 160
+        },
+        "genus": {
+          "type": "string",
+          "description": "Genus name",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "species": {
+          "type": "string",
+          "description": "Specific epithet",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "subfamily": {
+          "type": "string",
+          "enum": ["Cactoideae", "Opuntioideae", "Pereskioideae", "Maihuenioideae"],
+          "description": "Taxonomic subfamily"
+        },
+        "tribe": {
+          "type": "string",
+          "description": "Taxonomic tribe",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "origin": {
+          "type": "string",
+          "description": "Geographic origin or distribution",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "growthForm": {
+          "type": "string",
+          "enum": ["Globosa", "Columnar", "Cladodio (Opuntioide)", "Epífita", "Arbustiva / Foliar", "Geófita / Cespitosa"],
+          "description": "Habit or growth form"
+        },
+        "level": {
+          "type": "integer",
+          "description": "Assigned quiz level (1 to 20)"
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Public visibility flag for catalog queries"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "UID of the owner who created the species",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation"
+        }
+      },
+      "required": ["speciesId", "scientificName", "genus", "species", "subfamily", "tribe", "origin", "growthForm", "level", "isPublic", "createdBy", "createdAt"]
+    },
+    "DeletedCactusSpecies": {
+      "title": "DeletedCactusSpecies",
+      "description": "Record of a base cactus species removed from the catalog by the owner",
+      "type": "object",
+      "properties": {
+        "speciesId": {
+          "type": "string",
+          "description": "ID of the deleted species",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Public visibility flag for catalog queries"
+        },
+        "deletedBy": {
+          "type": "string",
+          "description": "UID of the owner who deleted the species",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "deletedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of deletion"
+        }
+      },
+      "required": ["speciesId", "isPublic", "deletedBy", "deletedAt"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Administrator registry document",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified email address of the administrator",
+          "minLength": 3,
+          "maxLength": 254
+        },
+        "accessHash": {
+          "type": "string",
+          "description": "SHA-256 hash of the owner's secret editor PIN",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation"
+        }
+      },
+      "required": ["email", "accessHash", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/cactus_photos/{speciesId}": {
+      "schema": { "$ref": "#/entities/CactusPhoto" },
+      "description": "Publicly readable catalog of custom cactus species photos, editable exclusively by the app owner"
+    },
+    "/cactus_custom_species/{speciesId}": {
+      "schema": { "$ref": "#/entities/CustomCactusSpecies" },
+      "description": "New cactus species added by the app owner"
+    },
+    "/cactus_deleted_species/{speciesId}": {
+      "schema": { "$ref": "#/entities/DeletedCactusSpecies" },
+      "description": "Base cactus species deleted/hidden by the app owner"
+    },
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminUser" },
+      "description": "Trusted administrator lookup collection"
+    }
+  }
+}

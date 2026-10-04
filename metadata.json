@@ -1,0 +1,6 @@
+{
+  "name": "Cactáceas: Foto-quiz sobre especies",
+  "description": "Juego educativo y enciclopedia interactiva con las 1,400 especies de cactáceas por nombre científico. Incluye 9 modos de juego, tarjetas de estudio, tabla taxonómica y edición exclusiva de imágenes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
